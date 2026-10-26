@@ -178,6 +178,98 @@ if (telInput) {
   telInput.addEventListener("blur", validateTel);
 }
  
+// =========================================================
+  // 項目ごとのインラインバリデーション
+  // =========================================================
+  const fieldMessages = {
+    name: "お名前を入力してください。",
+    email: "有効なメールアドレスを入力してください。",
+    tel: "電話番号を確認してください。半角数字とハイフンで10〜11桁で入力してください。",
+    visitDate: "来場日を選択してください。",
+    visitTime: "入場時間帯を選択してください。",
+    agree: "規約・個人情報の取扱いへの同意が必要です。",
+    reservationId: "予約番号を入力してください。",
+    changeEmail: "有効なメールアドレスを入力してください。",
+    changeVisitDate: "変更後の来場日を選択してください。",
+    changeVisitTime: "変更後の入場時間帯を選択してください。"
+  };
+
+  function getFieldErrorElement(control) {
+    if (control.id === "visitDate") return visitDateError;
+    if (control.id === "changeVisitDate") return changeVisitDateError;
+    const field = control.closest(".fld");
+    if (!field) return null;
+    let error = field.querySelector(".field-error");
+    if (!error) {
+      error = document.createElement("p");
+      error.className = "field-error";
+      error.setAttribute("role", "alert");
+      error.hidden = true;
+      field.appendChild(error);
+    }
+    return error;
+  }
+
+  function fieldErrorMessage(control) {
+    if (control.id === "visitDate" || control.id === "changeVisitDate") {
+      if (control.validity.customError) return control.validationMessage;
+      if (!control.value) return fieldMessages[control.id];
+    }
+    if (control.validity.valueMissing) {
+      if (control.type === "checkbox") return fieldMessages.agree;
+      return fieldMessages[control.id] || fieldMessages[control.name] || "この項目を入力・選択してください。";
+    }
+    if (control.validity.typeMismatch) return fieldMessages[control.id] || "入力形式を確認してください。";
+    if (control.validity.patternMismatch || control.validity.tooShort || control.validity.tooLong) {
+      return fieldMessages[control.id] || "入力内容を確認してください。";
+    }
+    if (control.validity.customError) return control.validationMessage;
+    return "";
+  }
+
+  function validateControl(control) {
+    if (!control || control.disabled || control.type === "radio") return true;
+    if (control.id === "visitDate") validateVisitDate(control, visitDateError);
+    if (control.id === "changeVisitDate") validateVisitDate(control, changeVisitDateError);
+    const error = getFieldErrorElement(control);
+    const message = fieldErrorMessage(control);
+    if (error && error !== visitDateError && error !== changeVisitDateError) {
+      error.textContent = message;
+      error.hidden = !message;
+    }
+    if (error === visitDateError || error === changeVisitDateError) {
+      error.textContent = message;
+      error.hidden = !message;
+    }
+    control.classList.toggle("is-invalid", !!message);
+    if (message) control.setAttribute("aria-invalid", "true");
+    else control.removeAttribute("aria-invalid");
+    return !message;
+  }
+
+  function validateFormInline(targetForm) {
+    const controls = Array.from(targetForm.querySelectorAll("input, select, textarea"))
+      .filter(control => control.required && control.type !== "radio");
+    let valid = true;
+    controls.forEach(control => {
+      if (!validateControl(control)) valid = false;
+    });
+    if (!valid) {
+      const firstInvalid = targetForm.querySelector(".is-invalid");
+      if (firstInvalid) firstInvalid.focus();
+    }
+    return valid;
+  }
+
+  [form, document.getElementById("changeReservationForm")].filter(Boolean).forEach(function (targetForm) {
+    targetForm.querySelectorAll("input, select, textarea").forEach(function (control) {
+      if (control.type === "radio") return;
+      const eventName = control.type === "checkbox" || control.tagName === "SELECT" || control.type === "date" ? "change" : "input";
+      control.addEventListener(eventName, function () { validateControl(control); });
+      control.addEventListener("blur", function () { validateControl(control); });
+    });
+  });
+
 // =========================================================  
 // エラー表示 
 // ========================================================= 
@@ -230,18 +322,7 @@ form.addEventListener("submit", async (e) => {
   
   // ------------------------------------------------------- 
   // 会期外の日付・定休日チェック
-  if (!validateVisitDate(visitDateInput, visitDateError)) {
-    visitDateInput.reportValidity();
-    visitDateInput.focus();
-    return;
-  }
-
-  // HTML側のrequired等をチェック 
-  // ------------------------------------------------------- 
-  if (!form.checkValidity()) { 
-    form.reportValidity(); 
-    return; 
-  } 
+  if (!validateFormInline(form)) return; 
   
   
   // ------------------------------------------------------- 
@@ -392,16 +473,7 @@ form.addEventListener("submit", async (e) => {
     const oldWarning = changeFormSuccess.querySelector(".change-notification-warning");
     if (oldWarning) oldWarning.remove();
 
-    if (!validateVisitDate(changeVisitDateInput, changeVisitDateError)) {
-      changeVisitDateInput.reportValidity();
-      changeVisitDateInput.focus();
-      return;
-    }
-
-    if (!changeForm.checkValidity()) {
-      changeForm.reportValidity();
-      return;
-    }
+    if (!validateFormInline(changeForm)) return;
 
     changeSubmitBtn.disabled = true;
     changeSubmitBtn.textContent = "変更処理中…";
@@ -440,6 +512,14 @@ form.addEventListener("submit", async (e) => {
         changeFormSuccess.appendChild(warning);
       }
       changeForm.reset();
+      changeForm.querySelectorAll(".is-invalid").forEach(control => {
+        control.classList.remove("is-invalid");
+        control.removeAttribute("aria-invalid");
+      });
+      changeForm.querySelectorAll(".field-error, .date-error").forEach(error => {
+        error.textContent = "";
+        error.hidden = true;
+      });
     } catch (err) {
       clearTimeout(timeoutId);
       console.error(err);
@@ -508,6 +588,67 @@ form.addEventListener("submit", async (e) => {
         oriharaTimer = window.setInterval(function () { showOriharaWork(!showingRight); }, 4500);
       }
     });
+  }
+
+  // PC版のアーティスト一覧：手動スクロールに加えて、一定間隔で次の作品へ自動送り。
+  // マウスオーバー・キーボードフォーカス・タッチ中は停止し、操作後に再開する。
+  const artistSlider = document.querySelector(".wg");
+  if (artistSlider && window.matchMedia("(min-width: 900px)").matches && !reduceMotion) {
+    let artistAutoTimer = null;
+    let resumeTimer = null;
+    let pausedByUser = false;
+    const artistSlides = Array.from(artistSlider.querySelectorAll(":scope > .w"));
+
+    function stopArtistAuto() {
+      if (artistAutoTimer) window.clearInterval(artistAutoTimer);
+      artistAutoTimer = null;
+    }
+    function startArtistAuto() {
+      stopArtistAuto();
+      if (document.hidden || pausedByUser) return;
+      artistAutoTimer = window.setInterval(function () {
+        const visibleSlides = artistSlides.filter(function (slide) {
+          return window.getComputedStyle(slide).display !== "none";
+        });
+        if (visibleSlides.length < 2) return;
+
+        // スライダーの実際の最大スクロール位置で末尾を判定する。
+        // 最後のカードがコンテナ端で止まっても、次の周期で先頭へ戻す。
+        const maxScroll = Math.max(0, artistSlider.scrollWidth - artistSlider.clientWidth);
+        const current = artistSlider.scrollLeft;
+        if (maxScroll > 0 && current >= maxScroll - 12) {
+          artistSlider.scrollTo({ left: 0, behavior: "smooth" });
+          return;
+        }
+
+        const sliderLeft = artistSlider.getBoundingClientRect().left;
+        const currentIndex = visibleSlides.reduce(function (bestIndex, slide, index) {
+          const slideLeft = slide.getBoundingClientRect().left - sliderLeft + current;
+          const bestSlideLeft = visibleSlides[bestIndex].getBoundingClientRect().left - sliderLeft + current;
+          return Math.abs(slideLeft - current) < Math.abs(bestSlideLeft - current) ? index : bestIndex;
+        }, 0);
+        const nextSlide = visibleSlides[Math.min(currentIndex + 1, visibleSlides.length - 1)];
+        const targetLeft = Math.max(0, nextSlide.getBoundingClientRect().left - sliderLeft + current);
+        artistSlider.scrollTo({ left: Math.min(targetLeft, maxScroll), behavior: "smooth" });
+      }, 5000);
+    }
+    function registerManualUse() {
+      stopArtistAuto();
+      if (resumeTimer) window.clearTimeout(resumeTimer);
+      resumeTimer = window.setTimeout(function () {
+        pausedByUser = false;
+        startArtistAuto();
+      }, 7000);
+    }
+    artistSlider.addEventListener("mouseenter", function () { stopArtistAuto(); });
+    artistSlider.addEventListener("mouseleave", function () { startArtistAuto(); });
+    artistSlider.addEventListener("focusin", function () { stopArtistAuto(); });
+    artistSlider.addEventListener("focusout", function () { startArtistAuto(); });
+    artistSlider.addEventListener("pointerdown", function () { pausedByUser = true; registerManualUse(); });
+    artistSlider.addEventListener("wheel", registerManualUse, { passive: true });
+    artistSlider.addEventListener("touchstart", function () { pausedByUser = true; registerManualUse(); }, { passive: true });
+    document.addEventListener("visibilitychange", startArtistAuto);
+    startArtistAuto();
   }
 
 })();

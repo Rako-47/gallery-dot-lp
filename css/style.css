@@ -53,7 +53,6 @@ h2{font-family:var(--font-serif);font-weight:400;font-size:26px;line-height:1.55
 .hero{position:relative;min-height:800px;overflow:hidden}
 .bg{position:absolute;inset:0; background-image: url("../images/hero-exterior.jpg"); background-position:center top;background-size:cover;filter:grayscale(70%) contrast(1.1) brightness(.85)}
 .hero:after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,13,.15),rgba(11,11,13,.6) 42%,#0B0B0D 92%)}
-.logo{position:absolute;z-index:3;top:20px;left:16px;width:132px;filter:none}
 .hero .in{position:relative;z-index:2;padding:420px 24px 34px}
 h1{font-family:var(--font-serif);font-weight:400;font-size:60px;line-height:1.05;letter-spacing:0}
 h1 span{font-weight:400;color:var(--m);font-style:italic}
@@ -64,6 +63,9 @@ h1 span{font-weight:400;color:var(--m);font-style:italic}
 .h1s{font-family:var(--font-serif);font-size:15px;font-weight:300;letter-spacing:.06em;color:#d8d8db}
 
 /* ===================== Works ===================== */
+/* モバイルでは折原氏の既存の2作品切替表示を維持し、PC用の複製カードは隠す */
+.w-orihara-second{display:none}
+
 .wg{display:block}
 .w{margin-bottom:44px;position:relative}
 .w img{aspect-ratio:4/5;object-fit:cover}
@@ -74,6 +76,9 @@ h1 span{font-weight:400;color:var(--m);font-style:italic}
 
 /* ===================== Gift ===================== */
 .cupimg{border-radius:0}
+/* マグカップ特典：モバイルでは従来どおり縦並び */
+.gift-layout{display:block}
+.gift-info{display:contents}
 .steps{margin:22px 0;counter-reset:n}
 .steps li{counter-increment:n;padding:12px 0 12px 40px;position:relative;font-weight:400;font-size:12.5px;border-bottom:1px solid var(--l)}
 .steps li:before{content:counter(n,decimal-leading-zero);position:absolute;left:0;top:11px;font-family:var(--font-sans);font-size:11px;color:var(--m);letter-spacing:.05em}
@@ -142,7 +147,41 @@ textarea:focus-visible{
 .inline-lk{color:var(--f);text-decoration:underline;text-underline-offset:3px;padding:2px}
 .event-fld{padding:16px;border:1px solid var(--m);background:rgba(227,79,112,.06)}
 .submit-btn{margin-top:8px}
+/* 来場予約・予約変更フォームは、フォーム本体・入力欄・送信ボタンの幅を統一 */
+#reserveForm,
+#changeReservationForm{
+  display:block;
+  width:100%;
+  max-width:760px;
+  margin-left:auto;
+  margin-right:auto;
+  box-sizing:border-box;
+}
+#reserveForm .fld input[type="text"],
+#reserveForm .fld input[type="email"],
+#reserveForm .fld input[type="tel"],
+#reserveForm .fld input[type="date"],
+#reserveForm .fld select,
+#changeReservationForm .fld input[type="text"],
+#changeReservationForm .fld input[type="email"],
+#changeReservationForm .fld input[type="date"],
+#changeReservationForm .fld select{
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+}
+#submitBtn,
+#changeSubmitBtn{
+  display:block;
+  width:100%;
+  max-width:none;
+  box-sizing:border-box;
+  margin-top:8px;
+}
 .form-error{margin-top:14px;font-size:12px;color:var(--m);border:1px solid var(--m);padding:12px;line-height:1.7}
+.field-error{margin-top:7px;font-size:12px;color:var(--m);line-height:1.6}
+.field-error[hidden]{display:none}
+.fld .is-invalid{border-color:var(--m)!important;outline-color:var(--m)}
 .date-error{margin-top:8px}
 .form-success{margin-top:14px;font-size:12px;color:#7ad3a0;border:1px solid #7ad3a0;padding:12px;line-height:1.7}
 
@@ -237,7 +276,7 @@ html.has-scroll-animations .fin.is-visible{
   display:inline-block;
   width:max-content;
   max-width:100%;
-  padding-right:.15em; /* 斜体の末尾がクリップされないよう余白を確保 */
+  padding-right:.45em; /* IMAGEの斜体末尾EがSP画面で切れないよう余白を確保 */
   clip-path:inset(0 100% 0 0);
   animation:hero-type-reveal 1.05s steps(22,end) both;
 }
@@ -299,12 +338,55 @@ html.has-scroll-animations .fin.is-visible{
     font-size:15px;
   }
   .hero{min-height:min(900px,100vh);min-height:max(700px,92vh)}
+  /* 来場特典：PCでは画像を左、説明を右に配置 */
+  .gift-layout{
+    display:grid;
+    grid-template-columns:minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items:center;
+    gap:clamp(28px, 4vw, 56px);
+    max-width:1200px;
+    margin:0 auto;
+  }
+  .gift-layout .cupimg{
+    width:100%;
+    max-height:460px;
+    aspect-ratio: 2200 / 1350;
+    object-fit:contain;
+    object-position:center center;
+    background:#101013;
+  }
+  .gift-info{display:block;min-width:0}
+  .gift-info .steps{margin-top:0}
+  .gift-info .stk{padding:16px}
   .hero .in{
     width:min(1200px, calc(100% - 96px));
     margin:0 auto;
     padding:clamp(300px,42vh,480px) 0 64px;
   }
-  .logo{top:30px;left:clamp(32px,4vw,72px);width:150px}
+  /* PC版CTA：横幅を抑え、クリックできる要素として視認しやすくする */
+  .hero .in > .cta,
+  .hero .in > .cta2,
+  .fin > .cta,
+  .fin > .cta2{
+    width:min(100%, 360px);
+    margin-left:auto;
+    margin-right:auto;
+  }
+  .cta,.cta2{
+    border-radius:4px;
+    padding:16px 22px;
+    letter-spacing:.12em;
+    box-shadow:0 3px 10px rgba(0,0,0,.18);
+    transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease,filter .18s ease;
+  }
+  .cta:hover,.cta2:hover{
+    filter:none;
+    transform:translateY(-2px);
+    box-shadow:0 6px 16px rgba(0,0,0,.28);
+  }
+  .cta:hover{background:#ed6683}
+  .cta2.cx:hover{background:rgba(227,79,112,.10);border-color:#ed6683;color:#ed6683}
+  .cta:focus-visible,.cta2:focus-visible{outline:2px solid #fff;outline-offset:4px}
   h1{font-size:clamp(72px,8vw,112px)}
   .h1s{font-size:17px}
   .s{
@@ -323,13 +405,42 @@ html.has-scroll-animations .fin.is-visible{
   .s > #changeReservationForm, .s > .lk{
     max-width:1000px;
   }
+  /* 予約変更フォームも来場予約フォームと同じ760px幅に統一 */
+  .s > #changeReservationForm{
+    width:100%;
+    max-width:760px;
+    margin-left:auto;
+    margin-right:auto;
+  }
   h2{font-size:clamp(30px,3vw,42px);margin-bottom:28px}
   .body{font-size:15px;max-width:760px}
-  /* 作品はカードを横並びに。折原作品のスライドアニメーションはそのまま */
-  .wg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(24px,3vw,48px);align-items:start}
-  .w{min-width:0;margin-bottom:12px}
-  .w img{aspect-ratio:4/5}
-  .w-orihara .orihara-viewport{aspect-ratio:4/5}
+  .wg .no{display:none!important}
+  /* 参加アーティスト：PC版のみ横スクロール式スライダー */
+  .wg{
+    display:flex;
+    gap:clamp(24px,3vw,40px);
+    align-items:stretch;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding:0 0 18px;
+    scroll-snap-type:x mandatory;
+    scroll-behavior:smooth;
+    overscroll-behavior-x:contain;
+    scrollbar-width:thin;
+    scrollbar-color:var(--m) var(--l);
+  }
+  .wg::-webkit-scrollbar{height:6px}
+  .wg::-webkit-scrollbar-track{background:var(--l)}
+  .wg::-webkit-scrollbar-thumb{background:var(--m)}
+  .wg > .w{flex:0 0 clamp(240px,27vw,330px);min-width:0;margin:0;scroll-snap-align:start}
+  .wg > .w img{aspect-ratio:4/5;object-fit:cover}
+  .w-orihara .orihara-viewport,.w-orihara-second .orihara-viewport{aspect-ratio:4/5}
+  /* PC版では折原氏の2作品をそれぞれ独立したスライドとして表示 */
+  .w-orihara .orihara-mobile-image,.w-orihara-second .orihara-mobile-image{display:none!important}
+  .w-orihara .orihara-desktop-image,.w-orihara-second .orihara-desktop-image{display:block!important;width:100%;height:100%;aspect-ratio:4/5;object-fit:cover}
+  .w-orihara .orihara-work-caption{display:grid;margin-top:5px}
+  .w-orihara .orihara-caption-item:not(.is-active){display:none}
+  .w-orihara-second{display:block}
   /* 年表：2016と2021を同じ行の先頭に置き、各列を独立したタイムラインに */
   .tl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:clamp(28px,4vw,56px);margin-left:auto;margin-right:auto;border-left:0;padding-left:0}
   .tl li{grid-column:auto;padding:0 0 22px 24px;min-width:0}
